@@ -1,0 +1,73 @@
+sudo apt update
+sudo apt install -y openjdk-17-jdk maven nginx
+sudo mkdir -p /home/dbukin/app
+cd /home/dbukin/app
+git clone https://github.com/dpbukin/oc_zachet.git
+cd /home/dbukin/app/oc_zachet
+mvn clean package
+sudo mkdir -p /var/www/app
+sudo cp target/zachet_admin_oc-0.0.1-SNAPSHOT.jar /var/www/app
+sudo chmod 755 /var/www/app/zachet_admin_oc-0.0.1-SNAPSHOT.jar
+sudo nano /etc/systemd/system/simple-api-service.service
+
+_________________________________________________________________
+[Unit]
+Description=Java_API_Service
+After=network.target
+
+[Service]
+User=dbukin
+ExecStart=/usr/bin/java -jar /var/www/app/zachet_admin_oc-0.0.1-SNAPSHOT.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+__________________________________________________________________
+
+
+sudo systemctl daemon-reload
+sudo systemctl start java-api-service
+sudo systemctl enable java-api-service
+systemctl status java-api-service
+
+sudo nano /etc/nginx/sites-available/default
+комментируем все
+
+
+__________________________________________________________________
+sudo nano /etc/nginx/sites-available/java-api-service
+
+server {
+    listen 80;
+
+    server_name java-api-service;
+
+    location / {
+        proxy_pass http://localhost:5000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+__________________________________________________________________
+
+sudo ln -s /etc/nginx/sites-available/java-api-service /etc/nginx/sites-enabled/
+
+sudo systemctl restart nginx
+
+ip addr - для определения ip машины
+
+Пример просмотра запроса в http
+http://192.168.1.221/health
+
+Пример запросов:
+
+GET http://192.168.1.221/health
+
+GET http://192.168.1.221/users/get_all_users
+
+GET http://192.168.1.221/products/get_all_products
+
